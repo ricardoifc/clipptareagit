@@ -45,7 +45,7 @@ class _MapaPageState extends State<MapaPage> {
         polylines: _polylines,
         initialCameraPosition: const CameraPosition(
           target: LatLng(-4.020701, -79.216120), // Coordenadas iniciales del mapa
-          zoom: 15.0,
+          zoom: 20.0,
         ),
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
