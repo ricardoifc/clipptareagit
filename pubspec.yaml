@@ -16,10 +16,9 @@ dependencies:
   cupertino_icons: ^1.0.2
   google_maps_flutter: ^2.2.6 #libreria para mapas
   location: ^4.4.0
-  flutter_polyline_points: ^1.0.0
+  dio: ^5.1.2
+  provider: ^6.0.5
   sqflite: ^2.2.8+4
-  http: ^0.13.6
-  path_provider: ^2.0.15
 
 
 dev_dependencies:

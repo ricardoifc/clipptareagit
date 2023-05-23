@@ -154,72 +154,72 @@ class _MapaPageState extends State<MapaPage> {
     try { //DIO
       Response response = await Dio().get(url); //DIO
 
-    if (response.statusCode == 200) {
+      if (response.statusCode == 200) {
 
-      // Map<String, dynamic> data = jsonDecode(response.body);
-      Map<String, dynamic> data = response.data;
-      List<LatLng> polylinePoints = [];
+        // Map<String, dynamic> data = jsonDecode(response.body);
+        Map<String, dynamic> data = response.data;
+        List<LatLng> polylinePoints = [];
 
-      if (data['status'] == 'OK') {
-        List<dynamic> pasos = data['routes'][0]['legs'][0]['steps'];
-        for (var step in pasos) {
-          double inicioLat = step['start_location']['lat'];
-          double inicioLng = step['start_location']['lng'];
-          double finalLat = step['end_location']['lat'];
-          double finalLng = step['end_location']['lng'];
+        if (data['status'] == 'OK') {
+          List<dynamic> pasos = data['routes'][0]['legs'][0]['steps'];
+          for (var step in pasos) {
+            double inicioLat = step['start_location']['lat'];
+            double inicioLng = step['start_location']['lng'];
+            double finalLat = step['end_location']['lat'];
+            double finalLng = step['end_location']['lng'];
 
-          polylinePoints.add(LatLng(inicioLat, inicioLng)); // punto inicial
+            polylinePoints.add(LatLng(inicioLat, inicioLng)); // punto inicial
 
-          List<LatLng> puntosIntermedios = _decodificarPolilinea(step['polyline']['points']); // puntos intermedios
-          polylinePoints.addAll(puntosIntermedios);
+            List<LatLng> puntosIntermedios = _decodificarPolilinea(step['polyline']['points']); // puntos intermedios
+            polylinePoints.addAll(puntosIntermedios);
 
-          polylinePoints.add(LatLng(finalLat, finalLng)); // punto final
+            polylinePoints.add(LatLng(finalLat, finalLng)); // punto final
 
 
 
-          /*
+            /*
           double lat = step['end_location']['lat'];
           double lng = step['end_location']['lng'];
           polylinePoints.add(LatLng(lat, lng));
           */
 
+          }
         }
-      }
 
-      // Dibujar
-      PolylineId polylineId = PolylineId('route');
-      Polyline polyline = Polyline(
-        polylineId: polylineId,
-        color: Colors.blue,
-        width: 2,
-        points: polylinePoints,
-      );
+        // Dibujar
+        PolylineId polylineId = PolylineId('route');
+        Polyline polyline = Polyline(
+          polylineId: polylineId,
+          color: Colors.blue,
+          width: 2,
+          points: polylinePoints,
+        );
 
-      setState(() {
-        _polyline = polyline;
-      });
+        setState(() {
+          _polyline = polyline;
+        });
 
-      // Ajustar pantalla ruta
-      final GoogleMapController controller = await _controller.future;
-      controller.animateCamera(
-        CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              startLatLng.latitude < finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
-              startLatLng.longitude < finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
+        // Ajustar pantalla ruta
+        final GoogleMapController controller = await _controller.future;
+        controller.animateCamera(
+          CameraUpdate.newLatLngBounds(
+            LatLngBounds(
+              southwest: LatLng(
+                startLatLng.latitude < finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
+                startLatLng.longitude < finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
+              ),
+              northeast: LatLng(
+                startLatLng.latitude > finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
+                startLatLng.longitude > finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
+              ),
             ),
-            northeast: LatLng(
-              startLatLng.latitude > finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
-              startLatLng.longitude > finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
-            ),
+            50.0, // área visible
           ),
-          50.0, // área visible
-        ),
-      );
-    } else {
-      print('Error al obtener la ruta: ${response.statusCode}');
+        );
+      } else {
+        print('Error al obtener la ruta: ${response.statusCode}');
+      }
     }
-  }
     catch (e) { // DIO
       print('Error al obtener la ruta: $e'); // DIO
     }
@@ -281,65 +281,65 @@ class _MapaPageState extends State<MapaPage> {
         markerId: markerId,
         position: LatLng(markerData.latitude, markerData.longitude),
         onTap: () {
-            showModalBottomSheet(
-              context: context,
-              builder: (BuildContext context) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    ListTile(
-                      leading: Icon(Icons.location_city),
-                      title: Text('Nombre del marcador: ${markerData.name}'),
-                      onTap: () {
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.location_on_outlined),
-                      title: Text(
-                          'Posición: ${markerData.latitude}, ${markerData.longitude}'),
-                      onTap: () {
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.pageview),
-                      title: Text('Ir a otra página'),
-                      onTap: () {
-                        Navigator.pushNamed(context, '/other_page');
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.location_on),
-                      title: Text('Ir a esta ubicación'),
-                      onTap: () {
-                        _drawRouteToMarker(markerData);
-                        Navigator.of(context).pop();
+          showModalBottomSheet(
+            context: context,
+            builder: (BuildContext context) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  ListTile(
+                    leading: Icon(Icons.location_city),
+                    title: Text('Nombre del marcador: ${markerData.name}'),
+                    onTap: () {
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on_outlined),
+                    title: Text(
+                        'Posición: ${markerData.latitude}, ${markerData.longitude}'),
+                    onTap: () {
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.pageview),
+                    title: Text('Ir a otra página'),
+                    onTap: () {
+                      Navigator.pushNamed(context, '/other_page');
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.location_on),
+                    title: Text('Ir a esta ubicación'),
+                    onTap: () {
+                      _drawRouteToMarker(markerData);
+                      Navigator.of(context).pop();
 
-                      },
+                    },
 
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.delete),
-                      title: Text('Eliminar este marcador'),
-                      onTap: () async {
-                        await DatabaseHelper.instance
-                            .deleteMarker(markerData.id!);
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.delete),
+                    title: Text('Eliminar este marcador'),
+                    onTap: () async {
+                      await DatabaseHelper.instance
+                          .deleteMarker(markerData.id!);
 
-                        setState(() {
-                          _marcadores.removeWhere(
-                                  (marker) => marker.markerId.value == markerId.value);
-                        });
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-        );
-        return marcador;
-      }).toSet();
+                      setState(() {
+                        _marcadores.removeWhere(
+                                (marker) => marker.markerId.value == markerId.value);
+                      });
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+      return marcador;
+    }).toSet();
     setState(() {
       _marcadores = updatedMarkers;
     });
