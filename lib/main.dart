@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+// import 'package:flutter_geocoding/flutter_geocoding.dart';
+// import 'package:geocoder/geocoder.dart';
+
 
 import 'marcadorDB.dart';
 
@@ -39,14 +44,14 @@ class MapaPage extends StatefulWidget {
 
 class _MapaPageState extends State<MapaPage> {
   Completer<GoogleMapController> _controller = Completer<GoogleMapController>();
-  List<MarkerData> _markerList = [];
+  List<MarkerData> _listaMarcadores = [];
   Polyline? _polyline;
 
-  Set<Marker> _markers = {};
+  Set<Marker> _marcadores = {};
   bool puedeEditar = true;
 
-  LatLng? currentPosition;
-  Location location = Location();
+  LatLng? posicionActual;
+  Location ubicacion = Location();
   final TextEditingController nameController = TextEditingController();
 
 
@@ -57,27 +62,9 @@ class _MapaPageState extends State<MapaPage> {
     });
   }
 
-  void _addMarker(LatLng position, String name) async {
-    MarkerData markerData = MarkerData(
-      name: name,
-      latitude: position.latitude,
-      longitude: position.longitude,
-    );
-    int markerId = await DatabaseHelper.instance.insertMarker(markerData);
-    markerData.id = markerId;
-    MarkerId markerIdObject = MarkerId(markerId.toString());
-    Marker marker = Marker(
-      markerId: markerIdObject,
-      position: position,
-      onTap: () {
-        // ...
-      },
-    );
 
-    setState(() {
-      _markers.add(marker);
-    });
-  }
+
+
 
   @override
   void dispose() {
@@ -85,19 +72,41 @@ class _MapaPageState extends State<MapaPage> {
     super.dispose();
   }
 
-  void _drawRouteToMarker(MarkerData markerData) async {
+
+  void _addMarker(LatLng posicion, String name) async {
+    MarkerData markerData = MarkerData(
+      name: name,
+      latitude: posicion.latitude,
+      longitude: posicion.longitude,
+    );
+    int markerId = await DatabaseHelper.instance.insertMarker(markerData);
+    MarkerId markerIdObject = MarkerId(markerId.toString());
+    Marker marker = Marker(
+      markerId: markerIdObject,
+      position: posicion,
+      onTap: () {},
+    );
+
+    setState(() {
+      _marcadores.add(marker);
+    });
+
+    // Actualizar los marcadores después de agregar uno nuevo
+    updateMarkers();
+  }
+
+
+  /*void _drawRouteToMarker(MarkerData markerData) async {
     // Obtener la ubicación actual
     LocationData currentLocation = await location.getLocation();
     LatLng currentLatLng = LatLng(currentLocation.latitude!, currentLocation.longitude!);
 
-    // Definir los puntos de inicio y fin de la línea
+
     LatLng startLatLng = currentLatLng;
     LatLng endLatLng = LatLng(markerData.latitude, markerData.longitude);
 
-    // Crear una lista de puntos para la línea
     List<LatLng> polylinePoints = [startLatLng, endLatLng];
 
-    // Crear un objeto Polyline para la línea
     PolylineId polylineId = PolylineId('route');
     Polyline polyline = Polyline(
       polylineId: polylineId,
@@ -110,7 +119,6 @@ class _MapaPageState extends State<MapaPage> {
       _polyline = polyline;
     });
 
-    // Ajustar la cámara para mostrar la línea trazada
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(
       CameraUpdate.newLatLngBounds(
@@ -124,20 +132,86 @@ class _MapaPageState extends State<MapaPage> {
             startLatLng.longitude > endLatLng.longitude ? startLatLng.longitude : endLatLng.longitude,
           ),
         ),
-        50.0, // Padding opcional para ampliar el área visible alrededor de la línea
+        50.0,
       ),
     );
+  }*/
+
+
+  Future<void> _drawRouteToMarker(MarkerData markerData) async {
+    // ubicación actual
+    LocationData ubicacionActual = await ubicacion.getLocation();
+    LatLng currentLatLng = LatLng(ubicacionActual.latitude!, ubicacionActual.longitude!);
+
+    LatLng startLatLng = currentLatLng;
+    LatLng endLatLng = LatLng(markerData.latitude, markerData.longitude);
+
+    // API de direcciones
+    String apiKey = 'AIzaSyCoQcikzh8RyjXsBlLCVxUJuvkHP2vpttM';
+    String url = 'https://maps.googleapis.com/maps/api/directions/json?origin=${startLatLng.latitude},${startLatLng.longitude}&destination=${endLatLng.latitude},${endLatLng.longitude}&key=$apiKey';
+    http.Response response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      // JSON
+      Map<String, dynamic> data = jsonDecode(response.body);
+      List<LatLng> polylinePoints = [];
+
+      if (data['status'] == 'OK') {
+        List<dynamic> steps = data['routes'][0]['legs'][0]['steps'];
+        for (var step in steps) {
+          double lat = step['end_location']['lat'];
+          double lng = step['end_location']['lng'];
+          polylinePoints.add(LatLng(lat, lng));
+        }
+      }
+
+      // Dibujar
+      PolylineId polylineId = PolylineId('route');
+      Polyline polyline = Polyline(
+        polylineId: polylineId,
+        color: Colors.blue,
+        width: 2,
+        points: polylinePoints,
+      );
+
+      setState(() {
+        _polyline = polyline;
+      });
+
+      // Ajustar pantalla ruta
+      final GoogleMapController controller = await _controller.future;
+      controller.animateCamera(
+        CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(
+              startLatLng.latitude < endLatLng.latitude ? startLatLng.latitude : endLatLng.latitude,
+              startLatLng.longitude < endLatLng.longitude ? startLatLng.longitude : endLatLng.longitude,
+            ),
+            northeast: LatLng(
+              startLatLng.latitude > endLatLng.latitude ? startLatLng.latitude : endLatLng.latitude,
+              startLatLng.longitude > endLatLng.longitude ? startLatLng.longitude : endLatLng.longitude,
+            ),
+          ),
+          50.0, // área visible
+        ),
+      );
+    } else {
+      print('Error al obtener la ruta: ${response.statusCode}');
+    }
   }
 
 
+
+
+
   void updateMarkers() async {
-    final markers = await DatabaseHelper.instance.getMarkers();
+    final marcadores = await DatabaseHelper.instance.getMarkers();
     setState(() {
-      _markerList = markers;
+      _listaMarcadores = marcadores;
     });
-    Set<Marker> updatedMarkers = markers.map((markerData) {
+    Set<Marker> updatedMarkers = marcadores.map((markerData) {
       final markerId = MarkerId(markerData.id.toString());
-      final marker = Marker(
+      final marcador = Marker(
         markerId: markerId,
         position: LatLng(markerData.latitude, markerData.longitude),
         onTap: () {
@@ -151,7 +225,6 @@ class _MapaPageState extends State<MapaPage> {
                       leading: Icon(Icons.location_city),
                       title: Text('Nombre del marcador: ${markerData.name}'),
                       onTap: () {
-                        // ...
                       },
                     ),
                     ListTile(
@@ -159,7 +232,6 @@ class _MapaPageState extends State<MapaPage> {
                       title: Text(
                           'Posición: ${markerData.latitude}, ${markerData.longitude}'),
                       onTap: () {
-                        // ...
                       },
                     ),
                     ListTile(
@@ -174,26 +246,9 @@ class _MapaPageState extends State<MapaPage> {
                       leading: Icon(Icons.location_on),
                       title: Text('Ir a esta ubicación'),
                       onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                // ...
-                                ListTile(
-                                  leading: Icon(Icons.location_on),
-                                  title: Text('Ir a esta ubicación'),
-                                  onTap: () {
-                                    Navigator.of(context).pop();
-                                    _drawRouteToMarker(markerData);
-                                  },
-                                ),
-                                // ...
-                              ],
-                            );
-                          },
-                        );
+                        _drawRouteToMarker(markerData);
+                        Navigator.of(context).pop();
+
                       },
 
                     ),
@@ -205,7 +260,7 @@ class _MapaPageState extends State<MapaPage> {
                             .deleteMarker(markerData.id!);
 
                         setState(() {
-                          _markers.removeWhere(
+                          _marcadores.removeWhere(
                                   (marker) => marker.markerId.value == markerId.value);
                         });
                         Navigator.pop(context);
@@ -217,10 +272,10 @@ class _MapaPageState extends State<MapaPage> {
             );
           },
         );
-        return marker;
+        return marcador;
       }).toSet();
     setState(() {
-      _markers = updatedMarkers;
+      _marcadores = updatedMarkers;
     });
   }
 
@@ -270,7 +325,7 @@ class _MapaPageState extends State<MapaPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MarkerListPage(markerList: _markerList),
+        builder: (context) => MarkerListPage(markerList: _listaMarcadores),
       ),
     );
   }
@@ -281,7 +336,7 @@ class _MapaPageState extends State<MapaPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mapa de basureros'),
+        title: const Text('Mapa de x'),
       ),
       body: Stack(
         children: [
@@ -295,7 +350,7 @@ class _MapaPageState extends State<MapaPage> {
             ),
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
-            markers: _markers,
+            markers: _marcadores,
             polylines: _polyline != null ? Set<Polyline>.from([_polyline!]) : Set<Polyline>(),
 
             onTap: (position) {
@@ -303,6 +358,24 @@ class _MapaPageState extends State<MapaPage> {
                 _showNameDialog(position);
               }
             },
+          ),
+          Positioned(
+            top: 10.0,
+            left: 16.0,
+            right: 16.0,
+            child: Container(
+              height: 40.0,
+              color: Colors.white,
+              child: const Center(
+                child: Text(
+                  'Calles: Aqui calles marcador',
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ),
           Positioned(
             bottom: 9.0,
@@ -342,6 +415,17 @@ class _MapaPageState extends State<MapaPage> {
               child: const Icon(Icons.list),
             ),
           ),
+          Positioned(
+            bottom: 9.0,
+            right: 190.0,
+            child: FloatingActionButton(
+              onPressed: () {
+                updateMarkers();
+              },
+              child: const Icon(Icons.refresh),
+            ),
+          ),
+
         ],
       ),
     );
@@ -355,8 +439,8 @@ class OtherPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Otra página'),
       ),
-      body: Center(
-        child: const Text('Otra página'),
+      body: const Center(
+        child: Text('Contenido de página'),
       ),
     );
   }
