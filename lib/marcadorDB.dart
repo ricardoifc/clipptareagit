@@ -69,6 +69,17 @@ class DatabaseHelper {
     return await db.insert('markers', markerData.toMap());
   }
 
+  Future<void> updateMarkerName(int id, String newName) async {
+    final db = await database;
+    await db.update(
+      'markers',
+      {'name': newName},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+
   Future<List<MarkerData>> getMarkers() async {
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('markers');

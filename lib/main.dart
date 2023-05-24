@@ -53,6 +53,8 @@ class _MapaPageState extends State<MapaPage> {
   LatLng? posicionActual;
   Location ubicacion = Location();
   final TextEditingController nameController = TextEditingController();
+  String _nombreCalle = '';
+
 
 
 
@@ -93,6 +95,57 @@ class _MapaPageState extends State<MapaPage> {
 
     // Actualizar los marcadores después de agregar uno nuevo
     updateMarkers();
+  }
+
+  void _editarNombre(MarkerData markerData) async {
+    String oldName = markerData.name;
+    nameController.text = oldName;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Text("hi");/*AlertDialog(
+          title: const Text('Editar nombre de marcador'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              hintText: 'Nombre del marcador',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Guardar'),
+              onPressed: () async {
+                String newName = nameController.text;
+                await DatabaseHelper.instance.updateMarkerName(markerData.id!, newName);
+
+                setState(() {
+                  _marcadores = _marcadores.map((marker) {
+                    if (marker.markerId.value == markerData.id.toString()) {
+                      return marker.copyWith(
+                        infoWindowParam: InfoWindow(
+                          title: newName,
+                          snippet: 'Posición: ${markerData.latitude}, ${markerData.longitude}',
+                        ),
+                      );
+                    }
+                    return marker;
+                  }).toSet();
+                });
+
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );*/
+      },
+    );
   }
 
 
@@ -138,92 +191,7 @@ class _MapaPageState extends State<MapaPage> {
   }*/
 
 
-  Future<void> _drawRouteToMarker(MarkerData markerData) async {
-    // ubicación actual
-    LocationData ubicacionActual = await ubicacion.getLocation();
-    LatLng currentLatLng = LatLng(ubicacionActual.latitude!, ubicacionActual.longitude!);
 
-    LatLng startLatLng = currentLatLng;
-    LatLng finalLatLng = LatLng(markerData.latitude, markerData.longitude);
-
-    // API de direcciones
-    String apiKey = 'AIzaSyCoQcikzh8RyjXsBlLCVxUJuvkHP2vpttM';
-    String url = 'https://maps.googleapis.com/maps/api/directions/json?origin=${startLatLng.latitude},${startLatLng.longitude}&destination=${finalLatLng.latitude},${finalLatLng.longitude}&key=$apiKey';
-    //http.Response response = await http.get(Uri.parse(url));
-
-    try { //DIO
-      Response response = await Dio().get(url); //DIO
-
-    if (response.statusCode == 200) {
-
-      // Map<String, dynamic> data = jsonDecode(response.body);
-      Map<String, dynamic> data = response.data;
-      List<LatLng> polylinePoints = [];
-
-      if (data['status'] == 'OK') {
-        List<dynamic> pasos = data['routes'][0]['legs'][0]['steps'];
-        for (var step in pasos) {
-          double inicioLat = step['start_location']['lat'];
-          double inicioLng = step['start_location']['lng'];
-          double finalLat = step['end_location']['lat'];
-          double finalLng = step['end_location']['lng'];
-
-          polylinePoints.add(LatLng(inicioLat, inicioLng)); // punto inicial
-
-          List<LatLng> puntosIntermedios = _decodificarPolilinea(step['polyline']['points']); // puntos intermedios
-          polylinePoints.addAll(puntosIntermedios);
-
-          polylinePoints.add(LatLng(finalLat, finalLng)); // punto final
-
-
-
-          /*
-          double lat = step['end_location']['lat'];
-          double lng = step['end_location']['lng'];
-          polylinePoints.add(LatLng(lat, lng));
-          */
-
-        }
-      }
-
-      // Dibujar
-      PolylineId polylineId = PolylineId('route');
-      Polyline polyline = Polyline(
-        polylineId: polylineId,
-        color: Colors.blue,
-        width: 2,
-        points: polylinePoints,
-      );
-
-      setState(() {
-        _polyline = polyline;
-      });
-
-      // Ajustar pantalla ruta
-      final GoogleMapController controller = await _controller.future;
-      controller.animateCamera(
-        CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              startLatLng.latitude < finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
-              startLatLng.longitude < finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
-            ),
-            northeast: LatLng(
-              startLatLng.latitude > finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
-              startLatLng.longitude > finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
-            ),
-          ),
-          50.0, // área visible
-        ),
-      );
-    } else {
-      print('Error al obtener la ruta: ${response.statusCode}');
-    }
-  }
-    catch (e) { // DIO
-      print('Error al obtener la ruta: $e'); // DIO
-    }
-  }
 
 
   List<LatLng> _decodificarPolilinea(String encoded) {
@@ -291,6 +259,8 @@ class _MapaPageState extends State<MapaPage> {
                       leading: Icon(Icons.location_city),
                       title: Text('Nombre del marcador: ${markerData.name}'),
                       onTap: () {
+                        //_editarNombre(markerData);
+                        //Navigator.of(context).pop();
                       },
                     ),
                     ListTile(
@@ -396,7 +366,123 @@ class _MapaPageState extends State<MapaPage> {
     );
   }
 
+  Future<void> _drawRouteToMarker(MarkerData markerData) async {
+    // ubicación actual
+    LocationData ubicacionActual = await ubicacion.getLocation();
+    LatLng currentLatLng = LatLng(ubicacionActual.latitude!, ubicacionActual.longitude!);
 
+    LatLng startLatLng = currentLatLng;
+    LatLng finalLatLng = LatLng(markerData.latitude, markerData.longitude);
+
+    // API de direcciones
+    String apiKey = 'AIzaSyCoQcikzh8RyjXsBlLCVxUJuvkHP2vpttM';
+    String url = 'https://maps.googleapis.com/maps/api/directions/json?origin=${startLatLng.latitude},${startLatLng.longitude}&destination=${finalLatLng.latitude},${finalLatLng.longitude}&key=$apiKey';
+    //http.Response response = await http.get(Uri.parse(url));
+
+    try { //DIO
+      Response response = await Dio().get(url); //DIO
+
+      if (response.statusCode == 200) {
+
+        // Map<String, dynamic> data = jsonDecode(response.body);
+        Map<String, dynamic> data = response.data;
+        List<LatLng> polylinePoints = [];
+
+        if (data['status'] == 'OK') {
+          List<dynamic> pasos = data['routes'][0]['legs'][0]['steps'];
+          for (var step in pasos) {
+            double inicioLat = step['start_location']['lat'];
+            double inicioLng = step['start_location']['lng'];
+            double finalLat = step['end_location']['lat'];
+            double finalLng = step['end_location']['lng'];
+
+            polylinePoints.add(LatLng(inicioLat, inicioLng)); // punto inicial
+            String endStreet = await _callesNombres(finalLat, finalLng);
+            print('Calle de destino: $endStreet');
+
+
+            List<LatLng> puntosIntermedios = _decodificarPolilinea(step['polyline']['points']); // puntos intermedios
+            polylinePoints.addAll(puntosIntermedios);
+
+            polylinePoints.add(LatLng(finalLat, finalLng)); // punto final
+
+
+
+            /*
+          double lat = step['end_location']['lat'];
+          double lng = step['end_location']['lng'];
+          polylinePoints.add(LatLng(lat, lng));
+          */
+
+          }
+        }
+
+        // Dibujar
+        PolylineId polylineId = PolylineId('route');
+        Polyline polyline = Polyline(
+          polylineId: polylineId,
+          color: Colors.blue,
+          width: 2,
+          points: polylinePoints,
+        );
+
+        setState(() {
+          _polyline = polyline;
+        });
+
+        // Ajustar pantalla ruta
+        final GoogleMapController controller = await _controller.future;
+        controller.animateCamera(
+          CameraUpdate.newLatLngBounds(
+            LatLngBounds(
+              southwest: LatLng(
+                startLatLng.latitude < finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
+                startLatLng.longitude < finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
+              ),
+              northeast: LatLng(
+                startLatLng.latitude > finalLatLng.latitude ? startLatLng.latitude : finalLatLng.latitude,
+                startLatLng.longitude > finalLatLng.longitude ? startLatLng.longitude : finalLatLng.longitude,
+              ),
+            ),
+            50.0, // área visible
+          ),
+        );
+      } else {
+        print('Error al obtener la ruta: ${response.statusCode}');
+      }
+    }
+    catch (e) { // DIO
+      print('Error al obtener la ruta: $e'); // DIO
+    }
+  }
+
+  Future<String> _callesNombres(double latitude, double longitude) async {
+    String apiKey = 'AIzaSyCoQcikzh8RyjXsBlLCVxUJuvkHP2vpttM';
+    String url = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=$latitude,$longitude&key=$apiKey';
+
+    try {
+      Response response = await Dio().get(url);
+      if (response.statusCode == 200) {
+        Map<String, dynamic> data = response.data;
+        if (data['status'] == 'OK') {
+          List<dynamic> results = data['results'];
+          if (results.isNotEmpty) {
+            setState(() {
+              _nombreCalle = results[0]['formatted_address'];
+            });
+          } else {
+            setState(() {
+              _nombreCalle = 'Calle desconocida';
+            });
+          }
+        }
+      }
+      return 'Calle desconocida';
+    } catch (e) {
+      print('Error al obtener el nombre de la calle: $e');
+      return 'Calle desconocida';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -425,24 +511,20 @@ class _MapaPageState extends State<MapaPage> {
               }
             },
           ),
-          Positioned(
-            top: 10.0,
-            left: 16.0,
-            right: 16.0,
-            child: Container(
-              height: 40.0,
-              color: Colors.white,
-              child: const Center(
-                child: Text(
-                  'Calles: Aqui calles marcador',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.bold,
-                  ),
+          Container(
+            height: 40.0,
+            color: Colors.white,
+            child: Center(
+              child: Text(
+                'Calles: $_nombreCalle',
+                style: const TextStyle(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
+
           Positioned(
             bottom: 9.0,
             right: 70.0,
